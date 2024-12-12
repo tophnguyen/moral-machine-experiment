@@ -1,4 +1,4 @@
-# moral-machine-experiment
+# Moral-machine-experiment
 
 The data used for this project comes from the Moral Machine Experiment, a platform for gathering
 human perspectives on moral decisions made by intelligent systems such as autonomous vehicles.
