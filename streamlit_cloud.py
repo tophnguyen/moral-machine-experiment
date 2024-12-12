@@ -4,6 +4,7 @@ import boto3
 import joblib
 import tempfile
 import plotly.graph_objs as go
+import plotly.express as px
 
 # Fetch model securely from S3
 @st.cache_data
@@ -100,56 +101,42 @@ if st.button("Predict Saved Probability"):
     except Exception as e:
         st.error("An error occurred during prediction. Please try again later.")
 
-# Add a second attribute selection for comparison
-attribute_level_compare = st.selectbox(
-    "Compare with Attribute Level", 
-    ["Hoomans", "Pets", "Female", "Male", "High", "Low", "Young", "Old", "Rand"]
+# Contextual analysis for country only
+st.subheader("Saved Probability by Country")
+st.write("Analyze how saved probabilities vary across countries for the selected attribute")
+
+# Define unique country values
+countries = ["USA", "CAN", "SGP", "CHN", "GBR", "ISR", "FRA", "DEU", "JPN", "KOR"]
+
+# Generate predictions for each country
+country_data = []
+for country in countries:
+    input_data = pd.DataFrame([{
+        "pedped": pedped,
+        "barrier": barrier,
+        "crossingsignal": crossingsignal,
+        "attribute_level": attribute_level,
+        "user_country_3": country,
+        "review_political": review_political,
+        "review_religious": review_religious
+    }])
+    saved_probability = model_pipeline.predict_proba(input_data)[0][1] * 100
+    country_data.append({"Country": country, "Saved Probability": saved_probability})
+
+# Convert results to DataFrame
+country_df = pd.DataFrame(country_data)
+
+# Create a bar chart for country comparison
+fig = px.bar(
+    country_df,
+    x="Country",
+    y="Saved Probability",
+    text="Saved Probability",
+    title="Saved Probability by Country",
+    labels={"Country": "Country", "Saved Probability": "Probability (%)"},
+    template="plotly_white"
 )
+fig.update_traces(texttemplate='%{text:.2f}%', textposition="outside")
 
-# Button for comparison
-if st.button("Compare Attributes"):
-    try:
-        # Prepare input data for both attribute levels
-        input_data_1 = pd.DataFrame([{
-            "pedped": pedped,
-            "barrier": barrier,
-            "crossingsignal": crossingsignal,
-            "attribute_level": attribute_level,
-            "user_country_3": user_country_3,
-            "review_political": review_political,
-            "review_religious": review_religious
-        }])
-        input_data_2 = input_data_1.copy()
-        input_data_2["attribute_level"] = attribute_level_compare
-
-        # Get prediction probabilities for both attributes
-        prob_1 = model_pipeline.predict_proba(input_data_1)[0][1] * 100
-        prob_2 = model_pipeline.predict_proba(input_data_2)[0][1] * 100
-
-        # Display results
-        st.metric(f"Saved Probability ({attribute_level})", f"{prob_1:.2f}%")
-        st.metric(f"Saved Probability ({attribute_level_compare})", f"{prob_2:.2f}%")
-
-        # Visualization
-        compare_fig = go.Figure(data=[
-            go.Bar(
-                x=[attribute_level, attribute_level_compare],
-                y=[prob_1, prob_2],
-                text=[f'{prob_1:.2f}%', f'{prob_2:.2f}%'],
-                textposition='auto'
-            )
-        ])
-        compare_fig.update_layout(
-            title='Attribute Level Comparison',
-            yaxis_title='Survival Probability (%)'
-        )
-        st.plotly_chart(compare_fig)
-
-        # Display ethical implication analysis
-        if prob_1 > prob_2:
-            st.write(f"The AI system prioritizes `{attribute_level}` over `{attribute_level_compare}`, which could have ethical implications in scenarios where `{attribute_level_compare}` represents vulnerable groups.")
-        else:
-            st.write(f"The AI system prioritizes `{attribute_level_compare}` over `{attribute_level}`, highlighting a potential bias in favor of `{attribute_level_compare}`.")
-
-    except Exception as e:
-        st.error(f"Error comparing attributes: {e}")
+# Display the chart
+st.plotly_chart(fig)
