@@ -6,7 +6,7 @@ import tempfile
 import plotly.graph_objs as go
 import plotly.express as px
 
-# Fetch model securely from S3
+# fetch model from S3 using secrets 
 @st.cache_data
 def fetch_model_from_s3():
     try:
@@ -18,11 +18,11 @@ def fetch_model_from_s3():
         )
         s3 = session.client("s3")
 
-        # Fetch S3 bucket and model key from Streamlit secrets
+        # fetch S3 bucket and model key from Streamlit secrets
         S3_BUCKET = st.secrets["s3"]["bucket_name"]
         MODEL_KEY = st.secrets["s3"]["model_key"]
 
-        # Download the model file to a temporary location
+        # download the model file to a temporary location
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             s3.download_file(S3_BUCKET, MODEL_KEY, temp_file.name)
             model_pipeline = joblib.load(temp_file.name)
@@ -32,16 +32,16 @@ def fetch_model_from_s3():
         st.error("Failed to load the model. Please contact support.")
         raise
 
-# Load the model
+# load the model
 st.write("Fetching model from S3...")
 model_pipeline = fetch_model_from_s3()
 st.success("Model loaded successfully!")
 
-# Streamlit UI
+# streamlit UI
 st.title("Moral Machines Prediction")
 st.write("Input data to get predictions")
 
-# Input fields
+# input fields
 pedped = st.number_input("Pedestrian", min_value=0, max_value=1, value=0)
 barrier = st.number_input("Barrier Present", min_value=0, max_value=1, value=0)
 crossingsignal = st.number_input("Crossing Signal", min_value=0, max_value=2, value=0)
@@ -56,31 +56,30 @@ user_country_3 = st.selectbox(
 review_political = st.number_input("Political Review", min_value=0, max_value=1, value=0)
 review_religious = st.number_input("Religious Review", min_value=0, max_value=1, value=0)
 
-# Prediction button
+# prediction button
 if st.button("Predict Saved Probability"):
     try:
-        # Prepare input data
+        # prep input data
         input_data = pd.DataFrame([{
             "pedped": pedped,
             "barrier": barrier,
             "crossingsignal": crossingsignal,
             "attribute_level": attribute_level,
-            "user_country_3": user_country_3,
             "review_political": review_political,
             "review_religious": review_religious
         }])
 
-        # Verify the model can predict probabilities
+        # verify the model can predict probabilities
         if hasattr(model_pipeline, 'predict_proba'):
-            # Get prediction probabilities
+            # probabilities
             prediction_proba = model_pipeline.predict_proba(input_data)[0]
             saved_probability = prediction_proba[1] * 100
             not_saved_probability = prediction_proba[0] * 100
 
-            # Display textual results
+            # display textual results
             st.metric(label="Probability of Being Saved", value=f"{saved_probability:.2f}%")
 
-            # Create a bar chart comparing probabilities
+            # create a bar chart comparing probabilities
             bar_fig = go.Figure(data=[
                 go.Bar(
                     x=['Not Saved', 'Saved'], 
@@ -101,14 +100,14 @@ if st.button("Predict Saved Probability"):
     except Exception as e:
         st.error("An error occurred during prediction. Please try again later.")
 
-# Contextual analysis for country only
+# contextual analysis for country only
 st.subheader("Saved Probability by Country")
 st.write("Analyze how saved probabilities vary across countries for the selected attribute")
 
-# Define unique country values
+# name country values
 countries = ["USA", "CAN", "SGP", "CHN", "GBR", "ISR", "FRA", "DEU", "JPN", "KOR"]
 
-# Generate predictions for each country
+# generate predictions for each country
 country_data = []
 for country in countries:
     input_data = pd.DataFrame([{
@@ -123,10 +122,10 @@ for country in countries:
     saved_probability = model_pipeline.predict_proba(input_data)[0][1] * 100
     country_data.append({"Country": country, "Saved Probability": saved_probability})
 
-# Convert results to DataFrame
+# convert results to DataFrame
 country_df = pd.DataFrame(country_data)
 
-# Create a bar chart for country comparison
+# create a bar chart for country comparison
 fig = px.bar(
     country_df,
     x="Country",
@@ -138,5 +137,5 @@ fig = px.bar(
 )
 fig.update_traces(texttemplate='%{text:.2f}%', textposition="outside")
 
-# Display the chart
+# display the chart
 st.plotly_chart(fig)
