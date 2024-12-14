@@ -65,6 +65,7 @@ if st.button("Predict Saved Probability"):
             "barrier": barrier,
             "crossingsignal": crossingsignal,
             "attribute_level": attribute_level,
+            "user_country_3": user_country_3,
             "review_political": review_political,
             "review_religious": review_religious
         }])
